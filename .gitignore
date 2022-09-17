@@ -29,8 +29,6 @@ test.yaml
 vendor
 
 # possible application binaries
-app
-main
 cmd/app/__debug_bin
 
 # folder for project dependencies managed by tilt
