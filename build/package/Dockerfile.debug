@@ -1,0 +1,17 @@
+# Builder
+FROM golang:1.17
+
+WORKDIR /usr/src/app
+
+# go debugger
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.8.3
+
+COPY . .
+
+RUN go mod download
+RUN go build -o tilt-demo ./cmd/app/main.go
+  
+EXPOSE 8080
+EXPOSE 40000
+
+ENTRYPOINT ["/usr/src/app/tilt-demo"]

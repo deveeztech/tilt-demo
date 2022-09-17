@@ -1,0 +1,48 @@
+# Load extensions
+# https://github.com/tilt-dev/tilt-extensions/tree/master/restart_process
+load('ext://restart_process', 'docker_build_with_restart')
+load('ext://namespace', 'namespace_create')
+load('ext://helm_resource', 'helm_resource', 'helm_repo')
+load('ext://git_resource', 'git_checkout')
+
+# Dependencies
+
+# Do NOT restructure your project for Tilt. 
+# Instead, restructure your Tiltfiles to match your project structure!
+
+# mysql
+namespace_create('example-ns')
+helm_repo('bitnami', 'https://charts.bitnami.com/bitnami')
+helm_resource('mysql', 'bitnami/mysql', namespace='example-ns')
+
+# another project
+git_checkout('https://github.com/tilt-dev/tilt-example-html.git#master', './dependencies/example-dependency/')
+include('./dependencies/example-dependency/0-base/Tiltfile')
+
+# Tests
+local_resource(
+    'tests',
+    cmd='go test ./...', 
+    allow_parallel=True,
+    deps=['./cmd/app'],
+)
+
+# Build Docker image
+docker_build_with_restart(
+    'tilt-demo-app-go',
+    context='.',
+    # (Optional) Use a custom Dockerfile path
+    dockerfile='./build/package/Dockerfile.debug',
+    # (Recommended) Updating a running container in-place
+    # https://docs.tilt.dev/live_update_reference.html
+    live_update=[
+        # Sync files from host to container
+        sync('./', '/usr/src/app'),
+        run('go build -gcflags="all=-N -l" -o tilt-demo ./cmd/app/main.go'),
+    ],
+    entrypoint='$GOPATH/bin/dlv --listen=:40000 --api-version=2 --headless=true exec /usr/src/app/tilt-demo --continue --accept-multiclient'
+)
+
+# Apply Kubernetes manifests
+k8s_yaml(['deployments/kubernetes-debug.yaml'])
+k8s_resource('app-go-example', port_forwards=['8080:8000', '40000:40000'])

@@ -1,0 +1,34 @@
+# Load extensions
+# https://github.com/tilt-dev/tilt-extensions/tree/master/restart_process
+load('ext://restart_process', 'docker_build_with_restart')
+
+# Tests
+local_resource(
+    'tests',
+    cmd='go test ./...', 
+    allow_parallel=True,
+    deps=['./cmd/app'],
+)
+
+# WE COULD BUILD THE BINARY LOCALLY AND SYNCHRONIZE IT BUT IS MORE EXPENSIVE IN TERMS OF TIME 
+
+
+# Build Docker image
+docker_build_with_restart(
+    'tilt-demo-app-go',
+    context='.',
+    # (Optional) Use a custom Dockerfile path
+    dockerfile='./build/package/Dockerfile.debug',
+    # (Recommended) Updating a running container in-place
+    # https://docs.tilt.dev/live_update_reference.html
+    live_update=[
+        # Sync files from host to container
+        sync('./', '/usr/src/app'),
+        run('go build -gcflags="all=-N -l" -o tilt-demo ./cmd/app/main.go'),
+    ],
+    entrypoint='$GOPATH/bin/dlv --listen=:40000 --api-version=2 --headless=true exec /usr/src/app/tilt-demo --continue --accept-multiclient'
+)
+
+# Apply Kubernetes manifests
+k8s_yaml(['deployments/kubernetes-debug.yaml'])
+k8s_resource('app-go-example', port_forwards=['8000:8000', '40000:40000'])

@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-go-example
+  labels:
+    app: app-go-example
+spec:
+  selector:
+    matchLabels:
+      app: app-go-example
+  template:
+    metadata:
+      labels:
+        app: app-go-example
+    spec:
+      containers:
+      - name: app
+        image: tilt-demo-app-go
+        ports:
+        - containerPort: 8000
+        - containerPort: 40000

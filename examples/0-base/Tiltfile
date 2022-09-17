@@ -1,0 +1,25 @@
+# Tests
+local_resource(
+    'tests',
+    cmd='go test ./...', 
+    allow_parallel=True,
+    deps=['./cmd/app'],
+)
+
+# Build Docker image
+docker_build(
+    'tilt-demo-app-go',
+    context='.',
+    # (Optional) Use a custom Dockerfile path
+    dockerfile='./build/package/Dockerfile',
+    # (Recommended) Updating a running container in-place
+    # https://docs.tilt.dev/live_update_reference.html
+    live_update=[
+        # Sync files from host to container
+        sync('./', '/usr/src/app'),
+    ]
+)
+
+# Apply Kubernetes manifests
+k8s_yaml(['deployments/kubernetes.yaml'])
+k8s_resource('app-go-example', port_forwards=8000,resource_deps=['tilt-demo-app-go'])
